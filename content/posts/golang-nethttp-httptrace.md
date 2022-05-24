@@ -4,9 +4,45 @@ date: 2022-05-24T08:24:53-03:00
 draft: true
 ---
 
-Golang has a collection of features for performing HTTP calls within `nethttp` package. Today, I'm going to cover the package [httptrace](https://pkg.go.dev/net/http/httptrace) demonstrating how to collect and measure http internal time, such as DNS resolution or time to open the connection.
+## The problem
 
-## httptrace
+The HTTP protocol is a pretty reliable and fast but on the other hand complex. It works on top of others protocols, such as TCP, and also relies on another application protocols, such as DNS. In scenarios where the requests starts to take more time than usual, we need to be able to inspect all the steps that occours within the protocol and not only the total time that the request took.
+
+The steps involved in a simple HTTP request are:
+
+1. DNS Lookup: The client tries to resolve the domain name for the request.
+
+   a) Client sends DNS Query to local ISP DNS server.
+
+   b) DNS server responds with the IP address for hostname.com
+
+1. Connect: Client establishes TCP connection with the IP address of hostname.com
+
+   a) Client sends SYN packet.
+
+   b) Web server sends SYN-ACK packet.
+
+   c) Client answers with ACK packet, concluding the three-way TCP connection establishment.
+
+1. Send: Client sends the HTTP request to the web server.
+
+1. Client waits for the server to respond to the request.
+
+   a) Web server processes the request, finds the resource, and sends the response to the Client. Client receives the first byte of the first packet from the web server, which contains the HTTP Response headers and content.
+
+1. Load: Client loads the content of the response.
+
+   a) Web server sends second TCP segment with the PSH flag set.
+
+   b) Client sends ACK. (Client sends ACK every two segments it receives. from the host)
+
+   c) Web server sends third TCP segment with HTTP_Continue.
+
+1. Close: Client sends a a FIN packet to close the TCP connection.
+
+## The solution
+
+Golang has a collection of features for performing HTTP calls within `nethttp` package. Today, I'm going to cover the package [httptrace](https://pkg.go.dev/net/http/httptrace) demonstrating how to collect and measure http internal time, such as DNS resolution or time to open the connection.
 
 The package provides an abstraction layer in order to run code when certain HTTP events happens. It is implemented thru the type `ClientTrace` via hooks that are dispatched on HTTP outgoing requests. The struct [ClientTrace](https://pkg.go.dev/net/http/httptrace#ClientTrace) is very well documented so I won't cover all hooks but here's a list of some interesting ones:
 
@@ -94,3 +130,7 @@ func main() {
 	fmt.Printf("Connection %v\n", stats.ConnectTime)
 }
 ```
+
+## Conclusion
+
+HTTP tracing is a valuable addition to Go for those who are interested in debugging HTTP request latency and writing tools for network debugging for outbound traffic.
