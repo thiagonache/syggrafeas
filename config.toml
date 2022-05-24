@@ -1,0 +1,4 @@
+baseURL = 'http://example.org/'
+languageCode = 'en-us'
+title = "Thiago Nache Carvalho's Blog"
+theme = "ananke"
